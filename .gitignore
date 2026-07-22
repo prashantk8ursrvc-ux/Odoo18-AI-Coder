@@ -4,4 +4,7 @@ __pycache__/
 *.db
 .env
 forge_output/
+resource/
+resource_*/
+
 
