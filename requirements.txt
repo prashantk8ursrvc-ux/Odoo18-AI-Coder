@@ -1,11 +1,23 @@
-# Odoo 18 SFT Generator v3 — Python Dependencies
+# Odoo 18 AI Coder Fine-Tuning & Data Pipeline — Python Dependencies
 # Install with: pip install -r requirements.txt
 
+# Machine Learning & Fine-Tuning (Unsloth / PyTorch / QLoRA)
+unsloth>=2024.5
+torch>=2.2.0
+triton>=2.2.0
+transformers>=4.40.0
+datasets>=2.18.0
+peft>=0.10.0
+bitsandbytes>=0.43.0
+accelerate>=0.28.0
+
+# Dataset Generator Pipeline (generate_dataset_v3.py)
 aiofiles>=23.2.1
 aiosqlite>=0.20.0
 ollama>=0.3.0
 pydantic>=2.7.0
 pydantic-settings>=2.3.0
+python-dotenv>=1.0.0
 rich>=13.7.0
 tenacity>=8.3.0
 tiktoken>=0.7.0
