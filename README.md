@@ -1,6 +1,32 @@
 # 📘 Odoo 18 AI Coder: Fine-Tuning & Dataset Generation Handbook
 
-> **A Narrative Technical Handbook & Guide**: An exploration into LLM Fine-Tuning, QLoRA mechanics, Unsloth Fused Triton Kernels, GGUF conversion, and dataset engineering to build a domain-expert Odoo 18 AI model on consumer hardware.
+> **A Modular Machine Learning Handbook & Guide**: An exploration into LLM Fine-Tuning, QLoRA mechanics, Unsloth Fused Triton Kernels, GGUF conversion, and dataset engineering to build a domain-expert Odoo 18 AI model on consumer hardware.
+
+---
+
+## 📂 Stage-Based Repository Architecture
+
+This repository is organized into **4 sequential stage directories** covering the end-to-end Machine Learning lifecycle:
+
+```text
+Odoo18-AI-Coder/
+├── 01_data_pipeline/             # 📊 Stage 1: Data Generation & Curation
+│   ├── generate_dataset_v3.py    # 4-Tier ChatML AST Dataset Generator
+│   └── odoo18_sft_v3.jsonl       # Generated 67.3 MB ChatML SFT Dataset
+├── 02_finetuning/                # ⚡ Stage 2: QLoRA 4-Bit Fine-Tuning
+│   ├── unsloth_finetune_v3.py    # Unsloth SFT Training Script (Qwen 2.5 Coder 7B)
+│   └── odoo18_coder_lora_v3/     # Learned LoRA Adapters (safetensors via LFS)
+├── 03_quantization/              # 🔄 Stage 3: Standalone GGUF Conversion
+│   ├── convert_lora_to_gguf.py   # Standalone GGUF Converter Script
+│   └── odoo18_coder_lora_v3.gguf # Standalone 160 MB GGUF Binary (via LFS)
+├── 04_ollama_deployment/         # 🐳 Stage 4: Ollama Local Deployment
+│   └── Modelfile                 # Ollama Local Model Registration Manifest
+├── README.md                     # Narrative SFT Technical Handbook
+├── DATA_GENERATION_AND_TRAINING.md # Detailed ML Handbook
+├── requirements.txt              # PyTorch, Unsloth, & Pipeline Dependencies
+├── .gitignore                    # Local storage exclusion rules
+└── .gitattributes                # Git LFS Large File Tracking Rules
+```
 
 ---
 
@@ -18,23 +44,19 @@ We are not claiming that our 7B local model is superior to these massive cloud A
 
 ## 📌 Executive Summary of What We Did
 
-To explore local domain-specific AI development, we engineered a complete end-to-end machine learning pipeline from scratch:
-
 ```mermaid
 graph LR
-    A["1200+ OCA Odoo 18 Modules"] --> B["Data Generation Pipeline (generate_dataset_v3.py)"]
-    B --> C["ChatML Dataset (odoo18_sft_v3.jsonl)"]
-    C --> D["QLoRA SFT Fine-Tuning (unsloth_finetune_v3.py)"]
-    D --> E["LoRA Adapters (odoo18_coder_lora_v3/)"]
-    E --> F["Standalone GGUF Converter (convert_lora_to_gguf.py)"]
-    F --> G["Local Ollama Model (odoo18-coder-v3)"]
+    A["1200+ OCA Modules"] --> B["01_data_pipeline/"]
+    B --> C["02_finetuning/"]
+    C --> D["03_quantization/"]
+    D --> E["04_ollama_deployment/"]
 ```
 
-1. **Curated a Dataset**: Extracted clean Odoo 18 code from ~1,200 OCA repositories into a 67 MB ChatML dataset (`odoo18_sft_v3.jsonl`).
-2. **Fine-Tuned on an 8GB GPU**: Used QLoRA and Unsloth on `Qwen2.5-Coder-7B-Instruct`.
+1. **Curated a Dataset**: Extracted clean Odoo 18 code from ~1,200 OCA repositories into `01_data_pipeline/odoo18_sft_v3.jsonl` (67 MB).
+2. **Fine-Tuned on an 8GB GPU**: Used QLoRA and Unsloth on `Qwen2.5-Coder-7B-Instruct` (`02_finetuning/`).
 3. **Hit an Optimal Loss of 0.5**: Reached the ideal training balance between learning rules and maintaining generalization.
-4. **Converted to Standalone GGUF**: Converted adapter weights into a 160 MB GGUF binary (`odoo18_coder_lora_v3.gguf`) in 5 seconds.
-5. **Deployed Locally via Ollama**: Registered `Modelfile` for 100% offline local inference (`odoo18-coder-v3`).
+4. **Converted to Standalone GGUF**: Converted adapter weights into a 160 MB GGUF binary in 5 seconds (`03_quantization/odoo18_coder_lora_v3.gguf`).
+5. **Deployed Locally via Ollama**: Registered `04_ollama_deployment/Modelfile` for 100% offline local inference (`odoo18-coder-v3`).
 
 ---
 
@@ -117,103 +139,60 @@ In language modeling, a final loss around **0.5 to 0.8 is the ideal target**:
 
 ## 🛠️ Part 3: Step-by-Step Pipeline Walkthrough
 
-### Step 1: Resource Curation (OCA Modules)
+### Stage 1: Data Generation & Curation (`01_data_pipeline/`)
 We collected **~1,200 Odoo Community Association (OCA) Odoo 18 modules** as source material in `./resource/`.
 
 #### 📌 How to Point `generate_dataset_v3.py` to Your Custom Odoo Code:
 
 ##### Method A: CLI Flag
 ```bash
-python generate_dataset_v3.py --source-directory /path/to/your/odoo18/modules
+python 01_data_pipeline/generate_dataset_v3.py --source-directory /path/to/your/odoo18/modules
 ```
 
 ##### Method B: Script Configuration
-Inside `generate_dataset_v3.py` (Line 47), edit `source_directory`:
+Inside `01_data_pipeline/generate_dataset_v3.py` (Line 47), edit `source_directory`:
 ```python
 class Settings(BaseSettings):
-    # Update Path to point to your local Odoo modules directory:
     source_directory: Path = PydanticField(default=Path("./resource"))
 ```
 
----
-
-### Step 2: Data Generation Pipeline (`generate_dataset_v3.py`)
-
-The dataset generator uses Python's `ast` module to split source code into 4 structured taxonomy tiers:
-
-```mermaid
-graph TD
-    A["Raw Odoo 18 Code Ingestion"] --> B["AST Parser & Taxonomy Tiering"]
-    B --> C1["MICRO Tier: Decorators, Fields, & XML Elements"]
-    B --> C2["MESO Tier: Model + View AST Relationships"]
-    B --> C3["MACRO Tier: Full Multi-File Module Creation Briefs"]
-    B --> C4["DOC_GROUNDED Tier: Odoo 18 Developer & Admin Rules"]
-    C1 --> D["ChatML Formatting Filter"]
-    C2 --> D
-    C3 --> D
-    C4 --> D
-    D --> E["Final Training Dataset (odoo18_sft_v3.jsonl)"]
-```
-
-* **MICRO Tier**: Teaches atomic field definitions, `@api.model_create_multi` decorators, and XML elements.
-* **MESO Tier**: Teaches relational field links across 2-4 files.
-* **MACRO Tier**: Teaches complete module briefs with full multi-file outputs.
-* **DOC_GROUNDED Tier**: Embeds Odoo 18 developer guidelines.
-
 #### Run Data Generation:
 ```bash
-python generate_dataset_v3.py
+python 01_data_pipeline/generate_dataset_v3.py
 ```
-* Output file generated: `odoo18_sft_v3.jsonl` (67.3 MB)
+* Output file generated: `01_data_pipeline/odoo18_sft_v3.jsonl` (67.3 MB)
 
 ---
 
-### Step 3: QLoRA Fine-Tuning (`unsloth_finetune_v3.py`)
+### Stage 2: QLoRA Fine-Tuning (`02_finetuning/`)
 
 Runs Supervised Fine-Tuning on `Qwen2.5-Coder-7B-Instruct` using Unsloth.
 
 ```bash
-python unsloth_finetune_v3.py
+python 02_finetuning/unsloth_finetune_v3.py
 ```
-* Outputs LoRA adapter weights: `./odoo18_coder_lora_v3/` (`adapter_model.safetensors`).
+* Outputs LoRA adapter weights: `02_finetuning/odoo18_coder_lora_v3/` (`adapter_model.safetensors`).
 
 ---
 
-### Step 4: Standalone GGUF Conversion (`convert_lora_to_gguf.py`)
+### Stage 3: Standalone GGUF Conversion (`03_quantization/`)
 
 Converts the LoRA adapter directory into a standalone **160 MB GGUF** binary file in 5 seconds:
 
-```mermaid
-graph TD
-    subgraph SlowApp [Slow Python Merge]
-        A1["Merge 16GB Base + LoRA in Python"] --> A2["OOM Memory Crash on Windows"]
-    end
-
-    subgraph FastApp [Standalone GGUF Converter]
-        B1["Read LoRA Directory (odoo18_coder_lora_v3/)"] --> B2["Standalone 160MB GGUF File (5 Seconds)"]
-    end
-```
-
 ```bash
-python convert_lora_to_gguf.py ./odoo18_coder_lora_v3
+python 03_quantization/convert_lora_to_gguf.py 02_finetuning/odoo18_coder_lora_v3
 ```
-* Output file generated: `odoo18_coder_lora_v3.gguf` (160.5 MB)
+* Output file generated: `03_quantization/odoo18_coder_lora_v3.gguf` (160.5 MB)
 
 ---
 
-### Step 5: Ollama Local Deployment (`Modelfile`)
+### Stage 4: Ollama Local Deployment (`04_ollama_deployment/`)
 
 Registers the GGUF model binary with Ollama for local inference:
 
-```dockerfile
-FROM qwen2.5-coder:7b
-ADAPTER ./odoo18_coder_lora_v3.gguf
-TEMPLATE """<|im_start|>system ... <|im_end|>"""
-```
-
 ```bash
 # Register with Ollama
-ollama create odoo18-coder-v3 -f Modelfile
+ollama create odoo18-coder-v3 -f 04_ollama_deployment/Modelfile
 
 # Test local inference
 ollama run odoo18-coder-v3 "Create a sale order inheritance model adding a custom job_no field"
