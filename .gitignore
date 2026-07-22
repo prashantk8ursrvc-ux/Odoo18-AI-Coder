@@ -1,0 +1,8 @@
+﻿__pycache__/
+*.pyc
+*.gguf
+*.safetensors
+*.log
+*.db
+.env
+forge_output/
